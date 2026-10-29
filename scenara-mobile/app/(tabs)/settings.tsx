@@ -1,0 +1,236 @@
+import { useState, useEffect } from "react";
+import {
+  SafeAreaView, Text, View, ScrollView,
+  TouchableOpacity, StatusBar, Alert, Platform, Image,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import { useTrading } from "@/src/session/TradingContext";
+import { useLanguage, Language } from "@/src/i18n";
+import { api } from "@/src/api/client";
+
+const BG       = "#08090C";
+const CARD     = "#0D1117";
+const BLUE     = "#4F8EF7";
+const PURPLE   = "#7C5CFC";
+const PINK     = "#F050AE";
+const PURPLE_D = "#4A3699";
+const TEXT     = "#F1F5F9";
+const TEXT_SUB = "#94A3B8";
+const TEXT_MID = "#64748B";
+const BORDER   = "rgba(255,255,255,0.08)";
+const BORDER_P = "rgba(124,92,252,0.2)";
+const RED      = "#EF4444";
+
+const GRAD_BRAND = [BLUE, PURPLE, PINK] as const;
+
+export default function SettingsScreen() {
+  const { authUser, logout, isAuthenticated } = useTrading();
+  const { t, language, setLanguage } = useLanguage();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    api.get("/admin/me").then(() => setIsAdmin(true)).catch(() => setIsAdmin(false));
+  }, [isAuthenticated]);
+
+  if (!isAuthenticated) {
+    return (
+      <View style={{ flex: 1, backgroundColor: BG }}>
+        <StatusBar barStyle="light-content" />
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: "rgba(124,92,252,0.1)" }}>
+            <Text style={{ color: PURPLE_D, fontSize: 9, fontFamily: "DMSans_700Bold", letterSpacing: 2 }}>SCENARA</Text>
+            <Text style={{ color: TEXT, fontSize: 26, fontFamily: "DMSans_700Bold", letterSpacing: -0.5, marginTop: 4 }}>{t.settings.title}</Text>
+          </View>
+
+          <ScrollView contentContainerStyle={{ flex: 1, justifyContent: "center", paddingHorizontal: 28 }}>
+            <View style={{ alignItems: "center", marginBottom: 40 }}>
+              <View style={{ width: 72, height: 72, borderRadius: 20, overflow: "hidden", marginBottom: 18 }}>
+                <LinearGradient colors={GRAD_BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ color: "white", fontSize: 32, fontFamily: "DMSans_700Bold" }}>S</Text>
+                </LinearGradient>
+              </View>
+              <Text style={{ color: TEXT, fontSize: 22, fontFamily: "DMSans_700Bold", marginBottom: 8 }}>
+                {language === "pt" ? "Entre na sua conta" : language === "zh" ? "登录你的账户" : "Sign in to your account"}
+              </Text>
+              <Text style={{ color: TEXT_MID, fontSize: 14, textAlign: "center", lineHeight: 20 }}>
+                {language === "pt"
+                  ? "Crie uma conta gratuita para comprar posições, acompanhar seu portfólio e subir no ranking."
+                  : language === "zh"
+                    ? "创建免费账户即可买入仓位、跟踪投资组合并登上排行榜。"
+                    : "Create a free account to buy positions, track your portfolio, and climb the leaderboard."}
+              </Text>
+            </View>
+
+            <TouchableOpacity onPress={() => router.push("/register")} style={{ borderRadius: 5, overflow: "hidden", marginBottom: 12 }}>
+              <LinearGradient colors={GRAD_BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ paddingVertical: 16, alignItems: "center" }}>
+                <Text style={{ color: "white", fontFamily: "DMSans_700Bold", fontSize: 16 }}>
+                  {language === "pt" ? "Criar conta grátis" : language === "zh" ? "创建免费账户" : "Create free account"}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => router.push("/login")} style={{ paddingVertical: 15, borderRadius: 5, alignItems: "center", borderWidth: 1, borderColor: BORDER_P, backgroundColor: "rgba(124,92,252,0.05)", marginBottom: 32 }}>
+              <Text style={{ color: PURPLE, fontFamily: "DMSans_700Bold", fontSize: 16 }}>
+                {language === "pt" ? "Já tenho conta" : language === "zh" ? "我已有账户" : "I already have an account"}
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={{ color: PURPLE_D, fontSize: 10, fontFamily: "DMSans_700Bold", letterSpacing: 1.5, marginBottom: 10, textAlign: "center" }}>
+              {t.settings.language.toUpperCase()}
+            </Text>
+            <View style={{ gap: 8 }}>
+              {([
+                { lang: "en" as Language, flagUri: "https://flagcdn.com/w40/us.png", label: "English" },
+                { lang: "pt" as Language, flagUri: "https://flagcdn.com/w40/br.png", label: "Português" },
+                { lang: "zh" as Language, flagUri: "https://flagcdn.com/w40/cn.png", label: "中文" },
+              ]).map(({ lang, flagUri, label }) => {
+                const active = language === lang;
+                return (
+                  <TouchableOpacity key={lang} onPress={() => void setLanguage(lang)} style={{ borderRadius: 4, overflow: "hidden", borderWidth: 1, borderColor: active ? PURPLE : BORDER }}>
+                    {active ? (
+                      <LinearGradient colors={[BLUE, PURPLE]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ paddingVertical: 13, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <Image source={{ uri: flagUri }} style={{ width: 24, height: 16, borderRadius: 2 }} />
+                        <Text style={{ color: "white", fontFamily: "DMSans_700Bold", fontSize: 14 }}>{label}</Text>
+                        <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginLeft: "auto" as any }}>✓</Text>
+                      </LinearGradient>
+                    ) : (
+                      <View style={{ backgroundColor: CARD, paddingVertical: 13, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <Image source={{ uri: flagUri }} style={{ width: 24, height: 16, borderRadius: 2 }} />
+                        <Text style={{ color: TEXT_SUB, fontFamily: "DMSans_500Medium", fontSize: 14 }}>{label}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  const handleLogout = () => {
+    if (Platform.OS === "web") {
+      if (window.confirm(t.settings.logoutConfirm)) {
+        logout().then(() => router.replace("/login"));
+      }
+    } else {
+      Alert.alert(
+        t.settings.logout,
+        t.settings.logoutConfirm,
+        [
+          { text: t.settings.logoutCancel, style: "cancel" },
+          { text: t.settings.logout, style: "destructive", onPress: () => logout().then(() => router.replace("/login")) },
+        ]
+      );
+    }
+  };
+
+  const SectionLabel = ({ title }: { title: string }) => (
+    <Text style={{ color: PURPLE_D, fontSize: 10, fontFamily: "DMSans_700Bold", letterSpacing: 1.5, marginBottom: 8, marginTop: 20 }}>
+      {title}
+    </Text>
+  );
+
+  const RowItem = ({ label, value, onPress, danger }: { label: string; value?: string; onPress?: () => void; danger?: boolean }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={!onPress}
+      style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: CARD, borderRadius: 4, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: danger ? "rgba(239,68,68,0.2)" : BORDER }}
+    >
+      <Text style={{ color: danger ? RED : TEXT, fontSize: 15, fontFamily: "DMSans_500Medium" }}>{label}</Text>
+      {value && <Text style={{ color: TEXT_MID, fontSize: 13, fontFamily: "DMSans_400Regular" }}>{value}</Text>}
+      {onPress && !value && <Text style={{ color: TEXT_MID, fontSize: 16 }}>›</Text>}
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: BG }}>
+      <StatusBar barStyle="light-content" />
+      <SafeAreaView style={{ flex: 1 }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: "rgba(124,92,252,0.1)" }}>
+          <Text style={{ color: PURPLE_D, fontSize: 9, fontFamily: "DMSans_700Bold", letterSpacing: 2 }}>SCENARA</Text>
+          <Text style={{ color: TEXT, fontSize: 26, fontFamily: "DMSans_700Bold", letterSpacing: -0.5, marginTop: 4 }}>{t.settings.title}</Text>
+        </View>
+
+        <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+          <SectionLabel title={t.settings.account} />
+          <View style={{ backgroundColor: CARD, borderRadius: 6, padding: 18, marginBottom: 8, borderWidth: 1, borderColor: BORDER_P }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+              <View style={{ width: 52, height: 52, borderRadius: 26, overflow: "hidden" }}>
+                <LinearGradient colors={[BLUE, PURPLE, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ color: "white", fontSize: 20, fontFamily: "DMSans_700Bold" }}>
+                    {authUser?.display_name?.charAt(0).toUpperCase() ?? "?"}
+                  </Text>
+                </LinearGradient>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: TEXT, fontSize: 17, fontFamily: "DMSans_700Bold" }}>{authUser?.display_name ?? "—"}</Text>
+                <Text style={{ color: TEXT_MID, fontSize: 13, fontFamily: "DMSans_400Regular", marginTop: 2 }}>{authUser?.email ?? "—"}</Text>
+              </View>
+            </View>
+          </View>
+
+          <SectionLabel title={t.settings.language} />
+          <View style={{ gap: 8, marginBottom: 8 }}>
+            {([
+              { lang: "en" as Language, flagUri: "https://flagcdn.com/w40/us.png", label: "English" },
+              { lang: "pt" as Language, flagUri: "https://flagcdn.com/w40/br.png", label: "Português" },
+              { lang: "zh" as Language, flagUri: "https://flagcdn.com/w40/cn.png", label: "中文" },
+            ]).map(({ lang, flagUri, label }) => {
+              const active = language === lang;
+              return (
+                <TouchableOpacity key={lang} onPress={() => void setLanguage(lang)} style={{ borderRadius: 4, overflow: "hidden", borderWidth: 1, borderColor: active ? PURPLE : BORDER }}>
+                  {active ? (
+                    <LinearGradient colors={[BLUE, PURPLE]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ paddingVertical: 13, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <Image source={{ uri: flagUri }} style={{ width: 24, height: 16, borderRadius: 2 }} />
+                      <Text style={{ color: "white", fontFamily: "DMSans_700Bold", fontSize: 14 }}>{label}</Text>
+                      <Text style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginLeft: "auto" as any }}>✓</Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={{ backgroundColor: CARD, paddingVertical: 13, paddingHorizontal: 16, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <Image source={{ uri: flagUri }} style={{ width: 24, height: 16, borderRadius: 2 }} />
+                      <Text style={{ color: TEXT_SUB, fontFamily: "DMSans_500Medium", fontSize: 14 }}>{label}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <SectionLabel title={t.settings.notifications} />
+          <RowItem
+            label={t.settings.notificationsRow}
+            onPress={() => router.push("/notifications-settings")}
+          />
+
+          <SectionLabel title="RESEARCH" />
+          <RowItem
+            label="Signal Lab"
+            onPress={() => router.push("/signal-lab")}
+          />
+
+          <SectionLabel title={t.settings.appVersion} />
+          <RowItem label={t.settings.version} />
+
+          {isAdmin && (
+            <>
+              <SectionLabel title="ADMIN" />
+              <RowItem label="Event Resolution Panel" onPress={() => router.push("/admin")} />
+            </>
+          )}
+
+          <View style={{ marginTop: 20 }}>
+            <TouchableOpacity onPress={handleLogout} style={{ borderRadius: 5, overflow: "hidden" }}>
+              <View style={{ backgroundColor: "rgba(239,68,68,0.08)", borderWidth: 1, borderColor: "rgba(239,68,68,0.2)", borderRadius: 5, paddingVertical: 16, alignItems: "center" }}>
+                <Text style={{ color: RED, fontFamily: "DMSans_700Bold", fontSize: 15 }}>{t.settings.logout}</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
+  );
+}

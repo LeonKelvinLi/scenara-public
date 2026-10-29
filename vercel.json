@@ -1,0 +1,10 @@
+{
+  "buildCommand": "cd scenara-mobile && npm ci && npm run build",
+  "outputDirectory": "scenara-mobile/dist",
+  "installCommand": "echo 'install handled inside buildCommand'",
+  "framework": null,
+  "rewrites": [
+    { "source": "/api/backend/(.*)",   "destination": "https://scenara-backend.onrender.com/$1"    },
+    { "source": "/(.*)",               "destination": "/index.html"                                  }
+  ]
+}

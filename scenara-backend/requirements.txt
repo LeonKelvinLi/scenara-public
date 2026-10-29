@@ -1,0 +1,50 @@
+annotated-types==0.8.0
+anyio==4.15.1
+bcrypt==4.0.1
+certifi==2026.10.23
+cffi==2.1.1
+click==8.3.1
+cryptography==50.0.2
+dnspython==2.8.0
+email_validator==2.2.0
+fastapi==0.162.0
+h11==0.16.0
+httpcore==1.0.9
+httptools==0.7.1
+httpx==0.27.2
+idna==3.20
+passlib==1.7.4
+pycparser==3.12
+pydantic==2.14.1
+pydantic-settings==2.5.2
+pydantic_core==2.50.1
+python-dotenv==1.2.2
+python-multipart==0.0.31
+PyYAML==6.0.3
+six==1.17.0
+sniffio==1.3.1
+SQLAlchemy==2.0.34
+starlette==1.10.0
+typing_extensions==4.16.0
+uvicorn==0.30.6
+watchfiles==1.1.1
+websockets==16.0
+
+
+
+psycopg2-binary==2.9.11
+
+# Observability
+sentry-sdk[fastapi]==2.18.0
+
+# Push notifications (W3C Web Push). Expo's HTTP API is called via httpx
+# directly — no extra dep. pywebpush handles VAPID JWT signing + payload
+# encryption (aes128gcm) for browser push subscriptions.
+pywebpush==2.0.0
+
+# JWT authentication (HS256 only)
+PyJWT==2.15.1
+
+# Local, quota-free OPUS-MT translation (one int8 model resident at a time).
+ctranslate2==4.8.0
+sentencepiece==0.2.1

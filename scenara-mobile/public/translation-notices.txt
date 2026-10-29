@@ -1,0 +1,18 @@
+Scenara translation credits
+
+Market translations use the OPUS-MT English-Portuguese and English-Chinese
+models, packaged by Argos Open Technologies (model package version 1.9).
+
+Authors: Jörg Tiedemann and Santhosh Thottingal.
+OPUS-MT — Building open translation services for the World.
+Proceedings of the 22nd Annual Conference of the European Association for
+Machine Translation (EAMT), Lisbon, 2020.
+
+Original model weights: Creative Commons Attribution 4.0 International.
+License: https://creativecommons.org/licenses/by/4.0/
+Model source: https://github.com/argosopentech/argospm-index
+Runtime: https://github.com/OpenNMT/CTranslate2
+
+Scenara runs these models locally using int8 inference and paragraph chunks.
+Cached translations may include editorial corrections. Original resolution
+rules remain available through the original-text control and source link.

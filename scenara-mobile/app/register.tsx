@@ -1,0 +1,413 @@
+import { AuthShell } from "@/components/AuthShell";
+import { useState, useRef, useEffect } from "react";
+import {
+  View, Text, TextInput, TouchableOpacity,
+  StatusBar, KeyboardAvoidingView, Platform,
+  ScrollView, ActivityIndicator, useWindowDimensions,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import Svg, { Path, Defs, LinearGradient as SvgGrad, Stop, Circle } from "react-native-svg";
+import { router } from "expo-router";
+import {
+  useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_700Bold,
+} from "@expo-google-fonts/dm-sans";
+
+import { useTrading } from "@/src/session/TradingContext";
+import { useLanguage } from "@/src/i18n";
+import { api } from "@/src/api/client";
+
+const IS_WEB   = Platform.OS === "web";
+const BG       = "#08090C";
+const CARD     = "#0D1117";
+const SURFACE  = "#111620";
+const BLUE     = "#4F8EF7";
+const PURPLE   = "#7C5CFC";
+const PINK     = "#F050AE";
+const TEXT     = "#F1F5F9";
+const TEXT_MID = "#64748B";
+const TEXT_SUB = "#94A3B8";
+const BORDER   = "rgba(255,255,255,0.08)";
+const BORDER_P = "rgba(124,92,252,0.25)";
+const GREEN    = "#22C55E";
+const RED      = "#EF4444";
+const YELLOW   = "#F59E0B";
+
+function EyeIcon({ visible }: { visible: boolean }) {
+  return visible ? (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke={TEXT_MID} strokeWidth={1.8} />
+      <Circle cx="12" cy="12" r="3" stroke={TEXT_MID} strokeWidth={1.8} />
+    </Svg>
+  ) : (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" stroke={TEXT_MID} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" stroke={TEXT_MID} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M1 1l22 22" stroke={TEXT_MID} strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function ScenaraLogo({ size = 52 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size * 1.15} viewBox="0 0 40 48">
+      <Defs>
+        <SvgGrad id="rg2" x1="0" y1="0" x2="1" y2="0">
+          <Stop offset="0" stopColor={BLUE} />
+          <Stop offset="0.5" stopColor={PURPLE} />
+          <Stop offset="1" stopColor={PINK} />
+        </SvgGrad>
+      </Defs>
+      <Path d="M4 4 L20 36 L36 4" stroke="url(#rg2)" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M8 10 L20 30 L32 10" stroke="url(#rg2)" strokeWidth="3.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+      <Path d="M12 16 L20 28 L28 16" stroke="url(#rg2)" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+    </Svg>
+  );
+}
+
+function PasswordStrength({ password, isPt, isZh }: { password: string; isPt: boolean; isZh: boolean }) {
+  if (!password) return null;
+
+  let score = 0;
+  if (password.length >= 6)  score++;
+  if (password.length >= 10) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  const level = score <= 1 ? 0 : score <= 2 ? 1 : score <= 3 ? 2 : 3;
+  const labels    = ["Weak", "Fair", "Good", "Strong"];
+  const labels_pt = ["Fraca", "Razoável", "Boa", "Forte"];
+  const labels_zh = ["弱", "一般", "良好", "强"];
+  const colors    = [RED, YELLOW, BLUE, GREEN];
+  const widths    = ["25%", "50%", "75%", "100%"] as const;
+
+  return (
+    <View style={{ marginTop: -8, marginBottom: 14 }}>
+      <View style={{ height: 3, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+        <View style={{ height: "100%", width: widths[level], backgroundColor: colors[level], borderRadius: 2 }} />
+      </View>
+      <Text style={{ color: colors[level], fontSize: 10, fontFamily: "DMSans_500Medium", marginTop: 4 }}>
+        {isZh ? labels_zh[level] : isPt ? labels_pt[level] : labels[level]}
+      </Text>
+    </View>
+  );
+}
+
+export default function RegisterScreen() {
+  const { width: winW } = useWindowDimensions();
+  const isWide = winW >= 700;
+  const { register } = useTrading();
+  const { language } = useLanguage();
+  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail]             = useState("");
+  const [password, setPassword]       = useState("");
+  const [confirm, setConfirm]         = useState("");
+  const [error, setError]             = useState("");
+  const [loading, setLoading]         = useState(false);
+  const [serverReady, setServerReady] = useState(false);
+  const [showPass, setShowPass]       = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [focused, setFocused]         = useState<string | null>(null);
+
+  const emailRef   = useRef<TextInput>(null);
+  const passRef    = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Ping /health on mount to wake Render's cold server.
+  // Button stays disabled until this resolves so the server is warm before submit.
+  useEffect(() => {
+    api.get("/health")
+      .catch(() => {})
+      .finally(() => setServerReady(true));
+    return () => {
+      if (retryTimerRef.current) clearInterval(retryTimerRef.current);
+    };
+  }, []);
+
+  const [fontsLoaded] = useFonts({ DMSans_400Regular, DMSans_500Medium, DMSans_700Bold });
+  if (!fontsLoaded) return null;
+
+  const isPt = language === "pt";
+  const isZh = language === "zh";
+
+  const attemptRegister = async (retriesLeft: number) => {
+    setLoading(true);
+    const result = await register(email.trim().toLowerCase(), password, displayName.trim());
+    if (result.ok) {
+      setLoading(false);
+      router.replace("/(tabs)");
+      return;
+    }
+    const raw = (result.error ?? "").toLowerCase();
+    // Only treat definitive timeouts as a cold-start — not CORS / connection-refused
+    const isWarmUp = raw === "request timed out" || raw.includes("timed out");
+
+    if (isWarmUp && retriesLeft > 0) {
+      let sec = 12;
+      const countdownMsg = () =>
+        isZh ? `服务器启动中，${sec}秒后自动重试…` :
+        isPt ? `Servidor iniciando. Tentando novamente em ${sec}s…` :
+               `Server is warming up. Retrying in ${sec}s…`;
+      setError(countdownMsg());
+      setLoading(false);
+      if (retryTimerRef.current) clearInterval(retryTimerRef.current);
+      retryTimerRef.current = setInterval(() => {
+        sec--;
+        if (sec <= 0) {
+          clearInterval(retryTimerRef.current!);
+          retryTimerRef.current = null;
+          setError("");
+          attemptRegister(retriesLeft - 1);
+        } else {
+          setError(countdownMsg());
+        }
+      }, 1000);
+      return;
+    }
+
+    setLoading(false);
+    if (isWarmUp) {
+      setError(isZh ? "服务器正在启动，请稍后重试。" : isPt ? "Servidor iniciando. Tente novamente em breve." : "Server is warming up. Please try again in a moment.");
+    } else if (raw.includes("already") || raw.includes("exist") || raw.includes("registrado") || raw.includes("cadastrado") || raw.includes("duplicate")) {
+      setError(isZh ? "该邮箱已被注册，请直接登录。" : isPt ? "E-mail já cadastrado. Faça login." : "Email already registered. Please sign in instead.");
+    } else {
+      setError(result.error ?? (isZh ? "注册失败，请重试。" : isPt ? "Erro ao criar conta." : "Registration failed."));
+    }
+  };
+
+  const handleRegister = () => {
+    setError("");
+    if (!displayName.trim()) {
+      setError(isZh ? "请输入显示名称。" : isPt ? "Nome de usuário é obrigatório." : "Display name is required.");
+      return;
+    }
+    if (!email.trim()) {
+      setError(isZh ? "请输入电子邮件。" : isPt ? "E-mail é obrigatório." : "Email is required.");
+      return;
+    }
+    if (password.length < 6) {
+      setError(isZh ? "密码至少需要6个字符。" : isPt ? "Senha deve ter no mínimo 6 caracteres." : "Password must be at least 6 characters.");
+      return;
+    }
+    if (password !== confirm) {
+      setError(isZh ? "两次密码不一致。" : isPt ? "As senhas não coincidem." : "Passwords do not match.");
+      return;
+    }
+    attemptRegister(2);
+  };
+
+  const inputStyle = (name: string) => ({
+    backgroundColor: SURFACE,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: focused === name ? PURPLE : error ? "rgba(239,68,68,0.18)" : BORDER,
+    paddingHorizontal: 16,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    marginBottom: 14,
+  });
+
+  // ── FORM CONTENT (shared between web and mobile) ──────────────────────────
+  const formContent = (
+    <View style={{
+      backgroundColor: CARD, borderRadius: 6, padding: 24,
+      borderWidth: 1, borderColor: BORDER_P,
+      ...(isWide ? { maxWidth: 480, width: "100%", alignSelf: "center" as const } : {}),
+      shadowColor: PURPLE, shadowOpacity: 0, shadowRadius: 28, shadowOffset: { width: 0, height: 8 },
+    }}>
+      {/* Top gradient line */}
+      <LinearGradient
+        colors={[BLUE, PURPLE, PINK]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        style={{ height: 2, borderRadius: 1, marginBottom: 20, marginHorizontal: -24, marginTop: -24, borderTopLeftRadius: 22, borderTopRightRadius: 22 }}
+      />
+
+      <Text style={{ color: TEXT, fontSize: 34, fontFamily: "Georgia", marginBottom: 4 }}>
+        {isZh ? "创建账户" : isPt ? "Criar conta" : "Create account"}
+      </Text>
+      <Text style={{ color: TEXT_MID, fontSize: 13, fontFamily: "DMSans_400Regular", marginBottom: 22 }}>
+        {isZh ? "免费 · 无需信用卡 · 无真实资金" : isPt ? "Grátis · Sem cartão · Sem dinheiro real" : "Free · No card · No real money"}
+      </Text>
+
+      {!!error && (
+        <View style={{ backgroundColor: "rgba(239,68,68,0.08)", borderWidth: 1, borderColor: "rgba(239,68,68,0.2)", borderRadius: 10, padding: 12, marginBottom: 8, flexDirection: "row", gap: 8, alignItems: "center" }}>
+          <Text style={{ fontSize: 14 }}>⚠️</Text>
+          <Text style={{ color: RED, fontFamily: "DMSans_500Medium", fontSize: 13, flex: 1 }}>{error}</Text>
+        </View>
+      )}
+      {/* Display Name */}
+      <Text style={{ color: TEXT_SUB, fontSize: 11, fontFamily: "DMSans_700Bold", letterSpacing: 0.8, marginBottom: 7 }}>
+        {isZh ? "显示名称" : isPt ? "NOME DE USUÁRIO" : "DISPLAY NAME"}
+      </Text>
+      <View style={inputStyle("name")}>
+        <TextInput
+          id="display-name"
+          autoComplete="name"
+          value={displayName}
+          onChangeText={v => { setDisplayName(v); setError(""); }}
+          placeholder={isZh ? "您在排行榜上的名字" : isPt ? "Como aparecerá no ranking" : "How you'll appear on the leaderboard"}
+          placeholderTextColor={TEXT_MID}
+          autoCorrect={false}
+          returnKeyType="next"
+          onSubmitEditing={() => emailRef.current?.focus()}
+          onFocus={() => setFocused("name")} onBlur={() => setFocused(null)}
+          style={{ color: TEXT, fontSize: 15, fontFamily: "DMSans_400Regular", flex: 1, paddingVertical: 14 }}
+        />
+      </View>
+
+      {/* Email */}
+      <Text style={{ color: TEXT_SUB, fontSize: 11, fontFamily: "DMSans_700Bold", letterSpacing: 0.8, marginBottom: 7 }}>
+        {isZh ? "电子邮件" : isPt ? "E-MAIL" : "EMAIL"}
+      </Text>
+      <View style={inputStyle("email")}>
+        <TextInput
+          id="email"
+          autoComplete="email"
+          ref={emailRef}
+          value={email}
+          onChangeText={v => { setEmail(v); setError(""); }}
+          placeholder="you@example.com"
+          placeholderTextColor={TEXT_MID}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="next"
+          onSubmitEditing={() => passRef.current?.focus()}
+          onFocus={() => setFocused("email")} onBlur={() => setFocused(null)}
+          style={{ color: TEXT, fontSize: 15, fontFamily: "DMSans_400Regular", flex: 1, paddingVertical: 14 }}
+        />
+      </View>
+
+      {/* Password */}
+      <Text style={{ color: TEXT_SUB, fontSize: 11, fontFamily: "DMSans_700Bold", letterSpacing: 0.8, marginBottom: 7 }}>
+        {isZh ? "密码" : isPt ? "SENHA" : "PASSWORD"}
+      </Text>
+      <View style={inputStyle("password")}>
+        <TextInput
+          id="new-password"
+          autoComplete="new-password"
+          ref={passRef}
+          value={password}
+          onChangeText={v => { setPassword(v); setError(""); }}
+          placeholder="••••••••"
+          placeholderTextColor={TEXT_MID}
+          secureTextEntry={!showPass}
+          returnKeyType="next"
+          onSubmitEditing={() => confirmRef.current?.focus()}
+          onFocus={() => setFocused("password")} onBlur={() => setFocused(null)}
+          style={{ color: TEXT, fontSize: 15, fontFamily: "DMSans_400Regular", flex: 1, paddingVertical: 14 }}
+        />
+        <TouchableOpacity onPress={() => setShowPass(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <EyeIcon visible={showPass} />
+        </TouchableOpacity>
+      </View>
+
+      <PasswordStrength password={password} isPt={isPt} isZh={isZh} />
+
+      {/* Confirm Password */}
+      <Text style={{ color: TEXT_SUB, fontSize: 11, fontFamily: "DMSans_700Bold", letterSpacing: 0.8, marginBottom: 7 }}>
+        {isZh ? "确认密码" : isPt ? "CONFIRMAR SENHA" : "CONFIRM PASSWORD"}
+      </Text>
+      <View style={{
+        ...inputStyle("confirm"),
+        borderColor: confirm && password && confirm !== password
+          ? "rgba(239,68,68,0.4)"
+          : confirm && confirm === password
+          ? "rgba(34,197,94,0.35)"
+          : focused === "confirm" ? PURPLE : BORDER,
+      }}>
+        <TextInput
+          id="confirm-password"
+          autoComplete="new-password"
+          ref={confirmRef}
+          value={confirm}
+          onChangeText={v => { setConfirm(v); setError(""); }}
+          placeholder="••••••••"
+          placeholderTextColor={TEXT_MID}
+          secureTextEntry={!showConfirm}
+          returnKeyType="done"
+          onSubmitEditing={handleRegister}
+          onFocus={() => setFocused("confirm")} onBlur={() => setFocused(null)}
+          style={{ color: TEXT, fontSize: 15, fontFamily: "DMSans_400Regular", flex: 1, paddingVertical: 14 }}
+        />
+        <TouchableOpacity onPress={() => setShowConfirm(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <EyeIcon visible={showConfirm} />
+        </TouchableOpacity>
+      </View>
+
+      {!!confirm && password !== confirm && (
+        <Text style={{ color: RED, fontSize: 11, fontFamily: "DMSans_500Medium", marginTop: -10, marginBottom: 12 }}>
+          {isZh ? "两次密码不一致" : isPt ? "As senhas não coincidem" : "Passwords don't match"}
+        </Text>
+      )}
+      {!!confirm && password === confirm && password.length >= 6 && (
+        <Text style={{ color: GREEN, fontSize: 11, fontFamily: "DMSans_500Medium", marginTop: -10, marginBottom: 12 }}>
+          {isZh ? "密码一致 ✓" : isPt ? "Senhas coincidem ✓" : "Passwords match ✓"}
+        </Text>
+      )}
+
+      {/* Balance banner */}
+      <View style={{ backgroundColor: "rgba(34,197,94,0.07)", borderWidth: 1, borderColor: "rgba(34,197,94,0.18)", borderRadius: 4, padding: 12, marginBottom: 20, flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <Text style={{ fontSize: 20 }}>🎉</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: GREEN, fontFamily: "DMSans_700Bold", fontSize: 13 }}>
+            {isZh ? "$10,000 起始余额" : isPt ? "Saldo inicial de $10.000" : "$10,000 starting balance"}
+          </Text>
+          <Text style={{ color: TEXT_MID, fontFamily: "DMSans_400Regular", fontSize: 11, marginTop: 1 }}>
+            {isZh ? "模拟资金，零风险" : isPt ? "Dinheiro simulado, risco zero" : "Simulated money, zero risk"}
+          </Text>
+        </View>
+      </View>
+
+      {/* Submit */}
+      <TouchableOpacity onPress={handleRegister} disabled={loading || !serverReady} style={{ borderRadius: 5, overflow: "hidden", marginBottom: 16 }}>
+        <LinearGradient
+          colors={loading || !serverReady ? ["#111", "#111"] : [BLUE, PURPLE, PINK]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          style={{ paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+        >
+          {!serverReady
+            ? <>
+                <ActivityIndicator color="white" size="small" />
+                <Text style={{ color: "rgba(255,255,255,0.5)", fontFamily: "DMSans_500Medium", fontSize: 14 }}>
+                  {isZh ? "连接中…" : isPt ? "Conectando…" : "Connecting…"}
+                </Text>
+              </>
+            : loading
+            ? <ActivityIndicator color="white" />
+            : <>
+                <Text style={{ color: "white", fontFamily: "DMSans_700Bold", fontSize: 15 }}>
+                  {isZh ? "创建账户" : isPt ? "Criar conta" : "Create Account"}
+                </Text>
+                <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 14 }}>→</Text>
+              </>
+          }
+        </LinearGradient>
+      </TouchableOpacity>
+
+      {/* Divider */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16 }}>
+        <View style={{ flex: 1, height: 1, backgroundColor: BORDER }} />
+        <Text style={{ color: TEXT_MID, fontSize: 11 }}>{isZh ? "或" : isPt ? "ou" : "or"}</Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: BORDER }} />
+      </View>
+
+      {/* Sign in link */}
+      <TouchableOpacity
+        onPress={() => router.push("/login")}
+        style={{ alignItems: "center", paddingVertical: 12, borderRadius: 5, borderWidth: 1, borderColor: BORDER }}
+      >
+        <Text style={{ color: TEXT_SUB, fontSize: 14, fontFamily: "DMSans_400Regular" }}>
+          {isZh ? "已有账户？" : isPt ? "Já tem conta? " : "Have an account? "}
+          <Text style={{ color: PURPLE, fontFamily: "DMSans_700Bold" }}>
+            {isZh ? "登录 →" : isPt ? "Entrar →" : "Sign in →"}
+          </Text>
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // ── DESKTOP / WEB LAYOUT ──────────────────────────────────────────────────
+  return <AuthShell>{formContent}</AuthShell>;
+}

@@ -1,0 +1,68 @@
+# render.yaml — Render Blueprint for bringing Scenara back up
+#
+# The site was originally split across two hosts: the web export on Vercel, the
+# API on Render. That only worked because vercel.json rewrote /api/backend/* to
+# the Render backend, giving the browser a same-origin API. Move the web build
+# to Render and that rewrite disappears with it — every request would 404
+# against the static site.
+#
+# So the static site here sets EXPO_PUBLIC_API_URL instead. src/config/api.ts
+# checks that env var before it falls back to the "/api/backend" proxy path, so
+# the browser calls the backend directly. That is safe: CORS_ALLOW_ORIGINS is
+# "*" and the API sets allow_credentials=False, so there are no cookies to
+# protect cross-origin — auth is a Bearer token the client sends explicitly.
+#
+# Apply with: Render Dashboard → Blueprints → New Blueprint Instance.
+#
+# The existing scenara-db instance is resumed in place to preserve accounts
+# and history. Do not provision a replacement or import a dump over it.
+# For a fresh installation, restore the market dump (or a private full backup)
+# into PostgreSQL first, then supply its URL below.
+
+services:
+  # ── API ────────────────────────────────────────────────────────────────────
+  - type: web
+    name: scenara-backend
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: scenara-backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.17
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: PROJECT_PAUSED
+        value: false
+      - key: ENABLE_BACKGROUND_TASKS
+        value: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: CORS_ALLOW_ORIGINS
+        value: "*"
+      # Existing installations: keep the original database connection string.
+      - key: DATABASE_URL
+        sync: false
+
+  # ── Web ────────────────────────────────────────────────────────────────────
+  - type: web
+    name: scenara-web
+    runtime: static
+    buildCommand: cd scenara-mobile && npm ci && npx expo export --platform web
+    staticPublishPath: scenara-mobile/dist
+    envVars:
+      - key: EXPO_PUBLIC_PROJECT_PAUSED
+        value: false
+      - key: EXPO_PUBLIC_API_URL
+        value: https://scenara-backend.onrender.com
+    routes:
+      # expo-router is a client-side router: every deep link has to be served
+      # index.html or a refresh on /market-detail returns 404.
+      - type: rewrite
+        source: /*
+        destination: /index.html

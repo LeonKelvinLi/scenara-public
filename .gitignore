@@ -1,0 +1,25 @@
+scenara-mobile/venv/
+scenara-backend/venv/
+__pycache__/
+*.pyc
+.env
+venv/
+node_modules/
+.venv/
+.local/
+*.db
+*.db-shm
+*.db-wal
+
+# Agent/editor local state — machine-specific, never useful in another clone.
+# This line used to be written in UTF-16LE, which git reads as an unmatchable
+# pattern, so .claude/ was tracked for months without anyone noticing.
+.claude/
+
+# macOS junk — AppleDouble resource forks and Finder metadata.
+.DS_Store
+._*
+
+# Build output copied verbatim from scenara-mobile/public/archive/, which is
+# committed. Tracking both doubles ~19 MB of JSON in the repo for no gain.
+scenara-mobile/dist/archive/
